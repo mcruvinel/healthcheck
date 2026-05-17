@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #07090f;
+      --surface: #0d1117;
+      --card: #111827;
+      --border: #1f2937;
+      --border2: #374151;
+      --green: #22c55e;
+      --green-dim: #166534;
+      --red: #ef4444;
+      --red-dim: #7f1d1d;
+      --amber: #f59e0b;
+      --text: #d1fae5;
+      --muted: #6b7280;
+      --mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      font-family: var(--mono);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .header-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .site-url {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.5rem 1.2rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .status-badge.up {
+      background: var(--green-dim);
+      color: var(--green);
+      border: 1px solid var(--green);
+    }
+
+    .status-badge.down {
+      background: var(--red-dim);
+      color: var(--red);
+      border: 1px solid var(--red);
+    }
+
+    .status-badge.loading {
+      background: #1c1f26;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .pulse {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 0 0 currentColor;
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, .6);
+      }
+
+      70% {
+        box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+      }
+    }
+
+    .badge-down .pulse {
+      animation-name: pulse-red;
+    }
+
+    @keyframes pulse-red {
+      0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, .6);
+      }
+
+      70% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
+
+    /* ── Metrics ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.2rem 1.4rem;
+    }
+
+    .card-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+
+    .card-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--green);
+    }
+
+    .card-value.red {
+      color: var(--red);
+    }
+
+    .card-value.amber {
+      color: var(--amber);
+    }
+
+    .card-sub {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Charts ── */
+    .section-title {
+      font-size: 0.65rem;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.4rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 200px;
+    }
+
+    /* ── Status Heatmap ── */
+    .heatmap-wrap {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+    }
+
+    .hm-cell {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      cursor: default;
+      transition: transform 0.1s;
+    }
+
+    .hm-cell:hover {
+      transform: scale(1.4);
+    }
+
+    .hm-cell.ok {
+      background: var(--green);
+    }
+
+    .hm-cell.fail {
+      background: var(--red);
+    }
+
+    .hm-cell.empty {
+      background: var(--border);
+    }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-top: 0.8rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    .legend-box {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 2.5rem;
+      padding-top: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    footer span {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .blink {
+      animation: blink 1.2s step-end infinite;
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0;
+      }
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: #1f2937;
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 0.4rem 0.7rem;
+      font-size: 0.7rem;
+      color: var(--text);
+      pointer-events: none;
+      display: none;
+      z-index: 100;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="tooltip"></div>
+
+  <header class="header">
+    <div class="header-left">
+      <span class="header-label">// status monitor</span>
+      <span class="site-url" id="site-url">carregando...</span>
+    </div>
+    <div class="status-badge loading" id="status-badge">
+      <span class="pulse"></span>
+      <span id="status-text">aguardando</span>
+    </div>
+  </header>
+
+  <div class="metrics">
+    <div class="card">
+      <div class="card-label">// uptime 24h</div>
+      <div class="card-value" id="uptime-24h">—</div>
+      <div class="card-sub" id="sub-24h">calculando</div>
+    </div>
+    <div class="card">
+      <div class="card-label">// uptime 7d</div>
+      <div class="card-value" id="uptime-7d">—</div>
+      <div class="card-sub" id="sub-7d">calculando</div>
+    </div>
+    <div class="card">
+      <div class="card-label">// resp. média 24h</div>
+      <div class="card-value" id="avg-ms">—</div>
+      <div class="card-sub">milissegundos</div>
+    </div>
+    <div class="card">
+      <div class="card-label">// último check</div>
+      <div class="card-value" style="font-size:1rem; padding-top:0.4rem;" id="last-check">—</div>
+      <div class="card-sub" id="last-status">—</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="section-title">// tempo de resposta — últimas 24h</div>
+    <div class="chart-wrap">
+      <canvas id="rtChart" role="img" aria-label="Gráfico de tempo de resposta nas últimas 24 horas">Tempo de resposta
+        nas últimas 24h.</canvas>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="section-title">// histórico de status — últimos 10 dias</div>
+    <div class="heatmap-wrap" id="heatmap"></div>
+    <div class="heatmap-legend">
+      <span class="legend-box" style="background:var(--green)"></span> online
+      <span class="legend-box" style="background:var(--red); margin-left:8px"></span> offline
+      <span class="legend-box" style="background:var(--border); margin-left:8px"></span> sem dado
+    </div>
+  </div>
+
+  <footer>
+    <span>mcruvinel &mdash; refreshs a cada 10 min</span>
+    <span>atualizado: <span id="footer-ts">—</span> <span class="blink">_</span></span>
+  </footer>
+
+  <script>
+    const DATA_URL = "data/checks.json";
+    const tooltip = document.getElementById("tooltip");
+
+    function showTip(e, html) {
+      tooltip.innerHTML = html;
+      tooltip.style.display = "block";
+      moveTip(e);
+    }
+    function moveTip(e) {
+      tooltip.style.left = (e.clientX + 12) + "px";
+      tooltip.style.top = (e.clientY - 28) + "px";
+    }
+    function hideTip() { tooltip.style.display = "none"; }
+
+    function fmtDate(ts) {
+      const d = new Date(ts);
+      return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+    function fmtTime(ts) {
+      const d = new Date(ts);
+      return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
+    function uptimeColor(pct) {
+      if (pct >= 99) return "";
+      if (pct >= 95) return "amber";
+      return "red";
+    }
+    function msColor(ms) {
+      if (ms < 500) return "";
+      if (ms < 1500) return "amber";
+      return "red";
+    }
+
+    let rtChart = null;
+
+    async function loadData() {
+      const res = await fetch(DATA_URL + "?t=" + Date.now());
+      return res.json();
+    }
+
+    function buildMetrics(checks) {
+      const now = Date.now();
+      const h24 = now - 86400000;
+      const d7 = now - 7 * 86400000;
+
+      const c24 = checks.filter(c => new Date(c.ts) >= h24);
+      const c7 = checks.filter(c => new Date(c.ts) >= d7);
+
+      const up24 = c24.length ? (c24.filter(c => c.ok).length / c24.length * 100) : null;
+      const up7 = c7.length ? (c7.filter(c => c.ok).length / c7.length * 100) : null;
+      const avgMs24 = c24.filter(c => c.ok && c.ms > 0).length
+        ? Math.round(c24.filter(c => c.ok && c.ms > 0).reduce((s, c) => s + c.ms, 0) / c24.filter(c => c.ok && c.ms > 0).length)
+        : null;
+
+      return { up24, up7, avgMs24, c24, c7 };
+    }
+
+    function renderMetrics(data) {
+      const checks = data.checks || [];
+      const { up24, up7, avgMs24, c24 } = buildMetrics(checks);
+      const last = checks[checks.length - 1];
+
+      document.getElementById("site-url").textContent = data.url || "—";
+
+      // Status badge
+      const badge = document.getElementById("status-badge");
+      const stxt = document.getElementById("status-text");
+      if (last) {
+        badge.className = "status-badge " + (last.ok ? "up" : "down");
+        stxt.textContent = last.ok ? "online" : "offline";
+      }
+
+      // Uptime 24h
+      const u24el = document.getElementById("uptime-24h");
+      if (up24 !== null) {
+        u24el.textContent = up24.toFixed(2) + "%";
+        u24el.className = "card-value " + uptimeColor(up24);
+        document.getElementById("sub-24h").textContent =
+          c24.filter(c => c.ok).length + "/" + c24.length + " checks ok";
+      } else {
+        u24el.textContent = "n/a";
+        document.getElementById("sub-24h").textContent = "sem dados";
+      }
+
+      // Uptime 7d
+      const u7el = document.getElementById("uptime-7d");
+      if (up7 !== null) {
+        u7el.textContent = up7.toFixed(2) + "%";
+        u7el.className = "card-value " + uptimeColor(up7);
+        document.getElementById("sub-7d").textContent =
+          "últimos 7 dias";
+      } else {
+        u7el.textContent = "n/a";
+        document.getElementById("sub-7d").textContent = "sem dados";
+      }
+
+      // Avg response
+      const msEl = document.getElementById("avg-ms");
+      if (avgMs24 !== null) {
+        msEl.textContent = avgMs24 + "ms";
+        msEl.className = "card-value " + msColor(avgMs24);
+      } else {
+        msEl.textContent = "n/a";
+      }
+
+      // Last check
+      if (last) {
+        document.getElementById("last-check").textContent = fmtTime(last.ts);
+        document.getElementById("last-status").textContent =
+          "HTTP " + (last.status || "ERR") + (last.err ? " · " + last.err : "");
+      }
+
+      // Footer
+      if (data.updated) {
+        document.getElementById("footer-ts").textContent = fmtDate(data.updated);
+      }
+    }
+
+    function renderChart(checks) {
+      const now = Date.now();
+      const h24 = now - 86400000;
+      const c24 = checks.filter(c => new Date(c.ts) >= h24 && c.ok && c.ms > 0);
+
+      const labels = c24.map(c => fmtTime(c.ts));
+      const data = c24.map(c => c.ms);
+
+      const ctx = document.getElementById("rtChart");
+
+      if (rtChart) { rtChart.destroy(); }
+
+      rtChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "ms",
+            data,
+            borderColor: "#22c55e",
+            borderWidth: 1.5,
+            pointRadius: data.length > 60 ? 0 : 3,
+            pointBackgroundColor: "#22c55e",
+            fill: true,
+            backgroundColor: "rgba(34,197,94,0.06)",
+            tension: 0.3,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#1f2937",
+              titleColor: "#22c55e",
+              bodyColor: "#d1fae5",
+              borderColor: "#374151",
+              borderWidth: 1,
+              callbacks: {
+                label: ctx => ctx.parsed.y + " ms",
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: "#4b5563",
+                font: { family: "'JetBrains Mono', monospace", size: 10 },
+                maxRotation: 0,
+                autoSkip: true,
+                maxTicksLimit: 8,
+              },
+              grid: { color: "#1f2937" },
+            },
+            y: {
+              ticks: {
+                color: "#4b5563",
+                font: { family: "'JetBrains Mono', monospace", size: 10 },
+                callback: v => v + "ms",
+              },
+              grid: { color: "#1f2937" },
+              min: 0,
+            }
+          }
+        }
+      });
+    }
+
+    function renderHeatmap(checks) {
+      const TOTAL = 1440; // 10 dias × 144 checks/dia
+      const wrap = document.getElementById("heatmap");
+      wrap.innerHTML = "";
+
+      const recent = checks.slice(-TOTAL);
+      const padded = Array(Math.max(0, TOTAL - recent.length)).fill(null).concat(recent);
+
+      padded.forEach((c, i) => {
+        const cell = document.createElement("div");
+        cell.className = "hm-cell " + (c === null ? "empty" : c.ok ? "ok" : "fail");
+        if (c) {
+          cell.addEventListener("mouseenter", e => {
+            showTip(e,
+              `<b>${fmtDate(c.ts)}</b><br>HTTP ${c.status || "ERR"} · ${c.ms}ms`
+            );
+          });
+          cell.addEventListener("mousemove", moveTip);
+          cell.addEventListener("mouseleave", hideTip);
+        }
+        wrap.appendChild(cell);
+      });
+    }
+
+    async function init() {
+      try {
+        const data = await loadData();
+        renderMetrics(data);
+        renderChart(data.checks || []);
+        renderHeatmap(data.checks || []);
+      } catch (e) {
+        document.getElementById("status-text").textContent = "erro ao carregar dados";
+        console.error(e);
+      }
+    }
+
+    init();
+    setInterval(init, 60000); // auto-refresh a cada 1 min
+  </script>
+</body>
+
+</html>
