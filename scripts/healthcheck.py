@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 URL = os.environ.get("MONITOR_URL", "").strip()
 DATA_FILE = "data/checks.json"
-MAX_RECORDS = 1440
+MAX_RECORDS = 1440  # 10 dias × 24h × 6 checks/h
 
 if not URL:
-    print("MonitorURL it's not defined.")
+    print("❌ Variável MONITOR_URL não definida. Configure em Settings > Variables.")
     sys.exit(1)
 
 
@@ -26,10 +26,16 @@ def save_data(data):
         json.dump(data, f, separators=(",", ":"))
 
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; HealthMonitor/1.0)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+}
+
 def check_health(url):
     try:
         start = datetime.now()
-        response = requests.get(url, timeout=30, allow_redirects=True)
+        response = requests.get(url, timeout=30, allow_redirects=True, headers=HEADERS)
         elapsed_ms = round((datetime.now() - start).total_seconds() * 1000)
         return {
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
